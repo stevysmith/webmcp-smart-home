@@ -1,0 +1,1662 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WebMCP Smart Home</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg: #0a0a0f;
+  --surface: rgba(255,255,255,0.04);
+  --surface-hover: rgba(255,255,255,0.07);
+  --glass: rgba(255,255,255,0.06);
+  --glass-border: rgba(255,255,255,0.08);
+  --text: #e8e8ed;
+  --text-dim: #6e6e80;
+  --text-muted: #3a3a4a;
+  --accent: #3b82f6;
+  --accent-glow: rgba(59,130,246,0.3);
+  --green: #22c55e;
+  --green-glow: rgba(34,197,94,0.3);
+  --red: #ef4444;
+  --red-glow: rgba(239,68,68,0.25);
+  --orange: #f59e0b;
+  --purple: #a855f7;
+  --radius: 16px;
+  --radius-sm: 10px;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Header */
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 28px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.header h1 {
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.3px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.header h1 span { font-size: 24px; }
+.webmcp-badge {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.3s;
+}
+.webmcp-badge.active {
+  background: rgba(34,197,94,0.12);
+  color: var(--green);
+  border: 1px solid rgba(34,197,94,0.2);
+}
+.webmcp-badge.inactive {
+  background: rgba(239,68,68,0.1);
+  color: var(--red);
+  border: 1px solid rgba(239,68,68,0.2);
+}
+.webmcp-badge .dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  animation: pulse-dot 2s infinite;
+}
+@keyframes pulse-dot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.webmcp-banner {
+  display: none;
+  padding: 12px 28px;
+  background: rgba(239,68,68,0.08);
+  border-bottom: 1px solid rgba(239,68,68,0.15);
+  font-size: 13px;
+  color: #f87171;
+}
+.webmcp-banner a { color: #fca5a5; }
+
+/* Main layout */
+.main {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  gap: 0;
+  min-height: calc(100vh - 61px);
+}
+
+/* Dashboard grid */
+.dashboard {
+  padding: 24px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: auto auto auto;
+  gap: 16px;
+  align-content: start;
+}
+
+/* Cards */
+.card {
+  background: var(--glass);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius);
+  padding: 20px;
+  backdrop-filter: blur(20px);
+  transition: all 0.3s ease;
+}
+.card:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255,255,255,0.12);
+}
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title .icon { font-size: 16px; }
+
+/* Scene presets */
+.scenes { grid-column: 1 / -1; }
+.scene-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.scene-btn {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 14px 12px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.25s ease;
+}
+.scene-btn:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255,255,255,0.15);
+  transform: translateY(-1px);
+}
+.scene-btn.active {
+  background: rgba(59,130,246,0.12);
+  border-color: rgba(59,130,246,0.3);
+  color: var(--accent);
+}
+.scene-btn .scene-icon { font-size: 24px; }
+
+/* Lighting */
+.rooms-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+.room-card {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+.room-card::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 0; right: 0; bottom: 0;
+  border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity 0.5s ease;
+  pointer-events: none;
+}
+.room-card.on::before { opacity: 1; }
+.room-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+}
+.room-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.room-brightness {
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.5px;
+}
+.room-bulb {
+  font-size: 20px;
+  filter: grayscale(1) opacity(0.3);
+  transition: all 0.3s;
+}
+.room-card.on .room-bulb {
+  filter: grayscale(0) opacity(1);
+}
+.room-slider {
+  width: 100%;
+  margin-top: 10px;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  outline: none;
+}
+.room-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px; height: 14px;
+  border-radius: 50%;
+  background: var(--text);
+  cursor: pointer;
+  border: 2px solid var(--bg);
+}
+.room-color {
+  margin-top: 8px;
+  display: flex;
+  gap: 4px;
+}
+.color-dot {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: all 0.2s;
+}
+.color-dot:hover, .color-dot.active {
+  border-color: var(--text);
+  transform: scale(1.15);
+}
+
+/* Thermostat */
+.thermo-display {
+  text-align: center;
+  padding: 10px 0;
+}
+.thermo-temp {
+  font-size: 56px;
+  font-weight: 700;
+  letter-spacing: -3px;
+  line-height: 1;
+  background: linear-gradient(135deg, #fff, #aaa);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+.thermo-unit { font-size: 24px; letter-spacing: 0; }
+.thermo-mode {
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--text-dim);
+  text-transform: capitalize;
+}
+.thermo-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  margin-top: 16px;
+}
+.thermo-btn {
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  color: var(--text);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+}
+.thermo-btn:hover {
+  background: var(--surface-hover);
+  border-color: rgba(255,255,255,0.2);
+}
+.mode-tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 16px;
+  background: var(--surface);
+  border-radius: 8px;
+  padding: 3px;
+}
+.mode-tab {
+  flex: 1;
+  padding: 6px 0;
+  font-size: 11px;
+  font-weight: 500;
+  text-align: center;
+  border: none;
+  background: none;
+  color: var(--text-dim);
+  cursor: pointer;
+  border-radius: 6px;
+  transition: all 0.2s;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.mode-tab.active {
+  background: var(--accent);
+  color: #fff;
+}
+
+/* Music player */
+.music-display {
+  text-align: center;
+  padding: 8px 0;
+}
+.music-art {
+  width: 64px; height: 64px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, var(--purple), var(--accent));
+  margin: 0 auto 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  animation-duration: 3s;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.music-art.playing { animation-name: spin-art; }
+@keyframes spin-art { to { transform: rotate(360deg); } }
+.music-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.music-artist {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+.music-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 14px;
+}
+.music-btn {
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 20px;
+  cursor: pointer;
+  opacity: 0.7;
+  transition: opacity 0.2s;
+  padding: 4px;
+}
+.music-btn:hover { opacity: 1; }
+.music-btn.play-btn {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--accent);
+  opacity: 1;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.volume-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 14px;
+}
+.volume-row span { font-size: 14px; opacity: 0.5; }
+.volume-slider {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(255,255,255,0.1);
+  outline: none;
+}
+.volume-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+}
+.genre-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+  justify-content: center;
+}
+.genre-tag {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 500;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+.genre-tag:hover, .genre-tag.active {
+  background: rgba(168,85,247,0.15);
+  border-color: rgba(168,85,247,0.3);
+  color: var(--purple);
+}
+
+/* Doors */
+.doors-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.door-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 14px;
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--glass-border);
+}
+.door-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.door-icon { font-size: 18px; }
+.door-name { font-size: 13px; font-weight: 500; }
+.door-toggle {
+  width: 44px; height: 24px;
+  border-radius: 12px;
+  border: none;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.3s ease;
+  background: var(--red);
+}
+.door-toggle.locked { background: var(--green); }
+.door-toggle::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 18px; height: 18px;
+  border-radius: 50%;
+  background: #fff;
+  transition: transform 0.3s ease;
+}
+.door-toggle.locked::after { transform: translateX(20px); }
+.door-status {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  margin-top: 2px;
+}
+
+/* Intercom form (declarative WebMCP) */
+.intercom-card { grid-column: 1 / -1; }
+.intercom-form {
+  display: flex;
+  gap: 10px;
+  align-items: flex-end;
+}
+.intercom-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.intercom-field label {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-weight: 500;
+}
+.intercom-field select, .intercom-field input {
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  font-family: inherit;
+}
+.intercom-field select:focus, .intercom-field input:focus {
+  border-color: var(--accent);
+}
+.intercom-field input { flex: 1; min-width: 200px; }
+.intercom-submit {
+  padding: 8px 16px;
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.intercom-submit:hover { background: #2563eb; }
+
+/* Declarative form WebMCP CSS */
+form:tool-form-active {
+  outline: var(--accent) dashed 2px !important;
+  outline-offset: 4px;
+}
+input:tool-submit-active, button:tool-submit-active {
+  outline: var(--green) dashed 2px !important;
+  outline-offset: 2px;
+}
+
+/* Right sidebar - Agent Log */
+.sidebar {
+  border-left: 1px solid var(--glass-border);
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 61px);
+}
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-dim);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sidebar-header .pulse {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: var(--green);
+  animation: pulse-dot 2s infinite;
+}
+.log-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px;
+}
+.log-entry {
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  animation: log-in 0.3s ease;
+}
+@keyframes log-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.log-time {
+  color: var(--text-muted);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+}
+.log-tool {
+  color: var(--accent);
+  font-weight: 600;
+  margin-top: 3px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.log-params {
+  color: var(--text-dim);
+  margin-top: 4px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+  word-break: break-all;
+}
+.log-result {
+  color: var(--green);
+  margin-top: 4px;
+  font-size: 11px;
+}
+.log-empty {
+  text-align: center;
+  padding: 40px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.log-empty .log-empty-icon {
+  font-size: 32px;
+  margin-bottom: 10px;
+  opacity: 0.3;
+}
+
+/* Prompt output */
+.prompt-bar {
+  border-top: 1px solid var(--glass-border);
+  padding: 12px;
+}
+.prompt-label {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+#prompt-output {
+  font-size: 12px;
+  color: var(--text-dim);
+  line-height: 1.5;
+  max-height: 80px;
+  overflow-y: auto;
+  margin-bottom: 8px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.prompt-actions {
+  display: flex;
+  gap: 6px;
+}
+.prompt-btn {
+  flex: 1;
+  padding: 7px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--glass-border);
+  background: var(--surface);
+  color: var(--text-dim);
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+.prompt-btn:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+.prompt-btn.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+.prompt-btn.primary:hover { background: #2563eb; }
+
+/* Tools registered list */
+.tools-registered {
+  border-top: 1px solid var(--glass-border);
+  padding: 12px;
+}
+.tools-registered summary {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tools-registered summary::before { content: ''; }
+.tool-chip {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  background: rgba(59,130,246,0.1);
+  color: var(--accent);
+  margin: 4px 3px 0 0;
+  border: 1px solid rgba(59,130,246,0.15);
+}
+.tool-chip.declarative {
+  background: rgba(245,158,11,0.1);
+  color: var(--orange);
+  border-color: rgba(245,158,11,0.15);
+}
+
+/* Protocol flow */
+.protocol-flow {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--glass-border);
+}
+.flow-step {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  position: relative;
+  padding-bottom: 4px;
+}
+.flow-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  margin-top: 3px;
+  flex-shrink: 0;
+  transition: all 0.4s ease;
+  position: relative;
+  z-index: 1;
+}
+.flow-line {
+  position: absolute;
+  left: 4px;
+  top: 13px;
+  width: 2px;
+  height: calc(100% + 2px);
+  transition: background 0.4s ease;
+}
+.flow-step.completed .flow-dot { background: var(--green); box-shadow: 0 0 8px var(--green-glow); }
+.flow-step.completed .flow-line { background: var(--green); opacity: 0.3; }
+.flow-step.active .flow-dot { background: var(--accent); box-shadow: 0 0 10px var(--accent-glow); animation: pulse-dot 1s infinite; }
+.flow-step.active .flow-line { background: var(--accent); opacity: 0.3; }
+.flow-step.waiting .flow-dot { background: var(--text-muted); }
+.flow-step.waiting .flow-line { background: var(--text-muted); opacity: 0.2; }
+.flow-step.error .flow-dot { background: var(--red); box-shadow: 0 0 8px var(--red-glow); }
+.flow-content { flex: 1; padding-bottom: 10px; }
+.flow-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0.3px;
+}
+.flow-step.completed .flow-label { color: var(--green); }
+.flow-step.active .flow-label { color: var(--accent); }
+.flow-detail {
+  font-size: 10px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  color: var(--text-muted);
+  margin-top: 2px;
+  word-break: break-all;
+}
+.flow-step.active .flow-detail,
+.flow-step.completed .flow-detail { color: var(--text-dim); }
+
+/* Log section header */
+.log-section-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--glass-border);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.log-count {
+  background: var(--surface);
+  padding: 1px 7px;
+  border-radius: 8px;
+  font-size: 10px;
+}
+
+/* Enhanced log entries */
+.log-entry {
+  padding: 12px;
+  margin-bottom: 8px;
+  background: var(--surface);
+  border: 1px solid var(--glass-border);
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  animation: log-in 0.3s ease;
+}
+.log-entry-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.log-type-badge {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  text-transform: uppercase;
+}
+.log-type-badge.imperative {
+  background: rgba(59,130,246,0.12);
+  color: var(--accent);
+}
+.log-type-badge.declarative {
+  background: rgba(245,158,11,0.12);
+  color: var(--orange);
+}
+.log-section {
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+}
+.log-section-label {
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-muted);
+  margin-bottom: 3px;
+}
+.log-section .key { color: #7dd3fc; }
+.log-section .val-str { color: #86efac; }
+.log-section .val-num { color: #fbbf24; }
+.log-section .val-enum { color: #c4b5fd; }
+.log-arrow {
+  color: var(--green);
+  font-weight: 600;
+  margin: 6px 0 2px;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.log-arrow::before {
+  content: '';
+  width: 12px; height: 1px;
+  background: var(--green);
+  display: inline-block;
+}
+.log-result-text {
+  color: var(--green);
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  font-size: 11px;
+}
+.log-duration {
+  font-size: 9px;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: right;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1><span>🏠</span> WebMCP Smart Home</h1>
+  <div id="webmcp-badge" class="webmcp-badge inactive">
+    <div class="dot"></div>
+    <span>Checking...</span>
+  </div>
+</div>
+
+<div id="webmcp-banner" class="webmcp-banner">
+  WebMCP is not available. You need <strong>Chrome 146+</strong> with the
+  <code>chrome://flags/#enable-webmcp-testing</code> flag enabled.
+  <a href="https://developer.chrome.com/blog/webmcp-epp" target="_blank">Learn more</a>
+</div>
+
+<div class="main">
+  <div class="dashboard">
+
+    <!-- Scenes -->
+    <div class="card scenes">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">✨</span> Scenes</div>
+      </div>
+      <div class="scene-grid">
+        <button class="scene-btn" data-scene="good_morning" onclick="activateScene('good_morning')">
+          <span class="scene-icon">🌅</span> Good Morning
+        </button>
+        <button class="scene-btn" data-scene="movie_night" onclick="activateScene('movie_night')">
+          <span class="scene-icon">🎬</span> Movie Night
+        </button>
+        <button class="scene-btn" data-scene="party" onclick="activateScene('party')">
+          <span class="scene-icon">🎉</span> Party
+        </button>
+        <button class="scene-btn" data-scene="bedtime" onclick="activateScene('bedtime')">
+          <span class="scene-icon">🌙</span> Bedtime
+        </button>
+      </div>
+    </div>
+
+    <!-- Lighting -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">💡</span> Lighting</div>
+      </div>
+      <div class="rooms-grid" id="rooms-grid"></div>
+    </div>
+
+    <!-- Thermostat -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">🌡️</span> Climate</div>
+      </div>
+      <div class="thermo-display">
+        <div class="thermo-temp" id="thermo-temp">72<span class="thermo-unit">°F</span></div>
+        <div class="thermo-mode" id="thermo-mode">Auto</div>
+      </div>
+      <div class="thermo-controls">
+        <button class="thermo-btn" onclick="adjustTemp(-1)">−</button>
+        <button class="thermo-btn" onclick="adjustTemp(1)">+</button>
+      </div>
+      <div class="mode-tabs" id="mode-tabs">
+        <button class="mode-tab" data-mode="heat" onclick="setMode('heat')">Heat</button>
+        <button class="mode-tab" data-mode="cool" onclick="setMode('cool')">Cool</button>
+        <button class="mode-tab active" data-mode="auto" onclick="setMode('auto')">Auto</button>
+        <button class="mode-tab" data-mode="off" onclick="setMode('off')">Off</button>
+      </div>
+    </div>
+
+    <!-- Music -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">🎵</span> Music</div>
+      </div>
+      <div class="music-display">
+        <div class="music-art" id="music-art">🎵</div>
+        <div class="music-title" id="music-title">Not Playing</div>
+        <div class="music-artist" id="music-artist">—</div>
+      </div>
+      <div class="music-controls">
+        <button class="music-btn" onclick="musicAction('skip', -1)">⏮</button>
+        <button class="music-btn play-btn" id="play-btn" onclick="musicAction('toggle')">▶</button>
+        <button class="music-btn" onclick="musicAction('skip', 1)">⏭</button>
+      </div>
+      <div class="volume-row">
+        <span>🔈</span>
+        <input type="range" class="volume-slider" id="volume-slider" min="0" max="100" value="60"
+               oninput="setVolume(this.value)">
+        <span>🔊</span>
+      </div>
+      <div class="genre-tags" id="genre-tags"></div>
+    </div>
+
+    <!-- Doors -->
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title"><span class="icon">🔒</span> Security</div>
+      </div>
+      <div class="doors-grid" id="doors-grid"></div>
+    </div>
+
+    <!-- Intercom (Declarative WebMCP) -->
+    <div class="card intercom-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">📢</span> Intercom
+          <span style="font-size:9px;background:rgba(245,158,11,0.12);color:var(--orange);padding:2px 6px;border-radius:4px;font-weight:600;letter-spacing:0.5px;">DECLARATIVE</span>
+        </div>
+      </div>
+      <form class="intercom-form"
+            toolname="send_intercom_message"
+            tooldescription="Send a voice message to a room's intercom speaker in the smart home. Use this to broadcast announcements or communicate with people in specific rooms."
+            toolautosubmit>
+        <div class="intercom-field">
+          <label for="intercom-room">Room</label>
+          <select name="room" id="intercom-room"
+                  toolparamtitle="room"
+                  toolparamdescription="The room to send the intercom message to">
+            <option value="all_rooms">All Rooms</option>
+            <option value="living_room">Living Room</option>
+            <option value="bedroom">Bedroom</option>
+            <option value="kitchen">Kitchen</option>
+            <option value="bathroom">Bathroom</option>
+          </select>
+        </div>
+        <div class="intercom-field" style="flex:1">
+          <label for="intercom-msg">Message</label>
+          <input type="text" name="message" id="intercom-msg" placeholder="Dinner is ready!"
+                 toolparamtitle="message"
+                 toolparamdescription="The message to broadcast over the intercom">
+        </div>
+        <button type="submit" class="intercom-submit">📢 Broadcast</button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Sidebar: WebMCP Protocol Inspector -->
+  <div class="sidebar">
+    <div class="sidebar-header">
+      <div class="pulse"></div>
+      WebMCP Protocol Inspector
+    </div>
+
+    <!-- Protocol flow visualization -->
+    <div class="protocol-flow" id="protocol-flow">
+      <div class="flow-step completed" id="flow-register">
+        <div class="flow-dot"></div>
+        <div class="flow-line"></div>
+        <div class="flow-content">
+          <div class="flow-label">1. Register Tools</div>
+          <div class="flow-detail">navigator.modelContext.provideContext()</div>
+        </div>
+      </div>
+      <div class="flow-step completed" id="flow-discover">
+        <div class="flow-dot"></div>
+        <div class="flow-line"></div>
+        <div class="flow-content">
+          <div class="flow-label">2. Agent Discovers</div>
+          <div class="flow-detail">modelContextTesting.listTools()</div>
+        </div>
+      </div>
+      <div class="flow-step waiting" id="flow-call">
+        <div class="flow-dot"></div>
+        <div class="flow-line"></div>
+        <div class="flow-content">
+          <div class="flow-label">3. Tool Call</div>
+          <div class="flow-detail">Waiting for agent...</div>
+        </div>
+      </div>
+      <div class="flow-step waiting" id="flow-response">
+        <div class="flow-dot"></div>
+        <div class="flow-content">
+          <div class="flow-label">4. Response</div>
+          <div class="flow-detail">—</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Tool calls log -->
+    <div class="log-section-header">
+      <span>Tool Calls</span>
+      <span id="call-count" class="log-count">0</span>
+    </div>
+    <div class="log-scroll" id="log-scroll">
+      <div class="log-empty" id="log-empty">
+        <div class="log-empty-icon">⏳</div>
+        No tool calls yet
+      </div>
+    </div>
+
+    <!-- Registered tools -->
+    <details class="tools-registered" open>
+      <summary>
+        Registered Tools
+        <span id="tool-count" style="background:var(--surface);padding:1px 6px;border-radius:8px;font-size:10px;">0</span>
+      </summary>
+      <div id="tool-chips" style="margin-top:8px;"></div>
+    </details>
+
+    <div class="prompt-bar">
+      <div class="prompt-label">Prompt Output</div>
+      <div id="prompt-output">Adjust the smart home controls above, then copy this prompt to instruct an agent.</div>
+      <div class="prompt-actions">
+        <button class="prompt-btn" onclick="copyPrompt()">Copy</button>
+        <button class="prompt-btn primary" id="send-btn" onclick="sendToClaude()">Send to Claude</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ──────────────────────────────────────────────────────────
+const ROOMS = [
+  { id: 'living_room', name: 'Living Room', icon: '🛋️' },
+  { id: 'bedroom', name: 'Bedroom', icon: '🛏️' },
+  { id: 'kitchen', name: 'Kitchen', icon: '🍳' },
+  { id: 'bathroom', name: 'Bathroom', icon: '🚿' }
+];
+
+const COLORS = ['#f8f0e3','#ffcccb','#ffd700','#87ceeb','#98fb98','#dda0dd','#ff6b35','#00ff88'];
+const GENRES = ['Chill','Jazz','Pop','Rock','Classical','Lo-fi','Electronic','Ambient'];
+
+const TRACKS = {
+  'Chill':       [{ title: 'Sunset Waves', artist: 'Ocean Blue' },{ title: 'Slow Drift', artist: 'Amber Fields' }],
+  'Jazz':        [{ title: 'Blue Midnight', artist: 'Miles Beyond' },{ title: 'Smooth Run', artist: 'Chet Revival' }],
+  'Pop':         [{ title: 'Bright Side', artist: 'Neon Hearts' },{ title: 'Electric Feel', artist: 'Glass Echo' }],
+  'Rock':        [{ title: 'Thunder Road', artist: 'Iron Signal' },{ title: 'Live Wire', artist: 'Voltage' }],
+  'Classical':   [{ title: 'Clair de Lune', artist: 'Debussy' },{ title: 'Nocturne Op.9', artist: 'Chopin' }],
+  'Lo-fi':       [{ title: 'Rainy Desk', artist: 'Sleepy Cat' },{ title: 'Coffee Steam', artist: 'Dusty Vinyl' }],
+  'Electronic':  [{ title: 'Neon Grid', artist: 'Synthwave FM' },{ title: 'Pulse Drive', artist: 'Retro Byte' }],
+  'Ambient':     [{ title: 'Forest Dawn', artist: 'Nature Tapes' },{ title: 'Deep Space', artist: 'Astral Drift' }]
+};
+
+const DOORS = [
+  { id: 'front', name: 'Front Door', icon: '🚪' },
+  { id: 'back', name: 'Back Door', icon: '🚪' },
+  { id: 'garage', name: 'Garage', icon: '🏗️' }
+];
+
+const state = {
+  lights: {
+    living_room: { brightness: 80, color: '#f8f0e3', on: true },
+    bedroom:     { brightness: 40, color: '#dda0dd', on: true },
+    kitchen:     { brightness: 100, color: '#f8f0e3', on: true },
+    bathroom:    { brightness: 0, color: '#87ceeb', on: false }
+  },
+  thermostat: { temperature: 72, mode: 'auto' },
+  music: { playing: false, genre: 'Chill', trackIndex: 0, volume: 60 },
+  doors: { front: true, back: true, garage: false },
+  activeScene: null
+};
+
+const logEntries = [];
+
+// ─── Rendering ──────────────────────────────────────────────────────
+function renderRooms() {
+  const grid = document.getElementById('rooms-grid');
+  grid.innerHTML = ROOMS.map(r => {
+    const s = state.lights[r.id];
+    const onClass = s.on ? 'on' : '';
+    const glow = s.on ? `background: radial-gradient(circle at center, ${s.color}15, transparent 70%);` : '';
+    return `
+      <div class="room-card ${onClass}" id="room-${r.id}"
+           style="--glow-color:${s.color}">
+        <style>#room-${r.id}.on::before { ${glow} }</style>
+        <div class="room-name">${r.icon} ${r.name}</div>
+        <div class="room-status">
+          <div class="room-brightness">${s.on ? s.brightness + '%' : 'Off'}</div>
+          <div class="room-bulb" onclick="toggleRoom('${r.id}')" style="cursor:pointer">💡</div>
+        </div>
+        <input type="range" class="room-slider" min="0" max="100" value="${s.brightness}"
+               oninput="setRoomBrightness('${r.id}', this.value)">
+        <div class="room-color">
+          ${COLORS.map(c => `<div class="color-dot ${s.color === c ? 'active' : ''}"
+            style="background:${c}" onclick="setRoomColor('${r.id}','${c}')"></div>`).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function renderThermostat() {
+  document.getElementById('thermo-temp').innerHTML = `${state.thermostat.temperature}<span class="thermo-unit">°F</span>`;
+  document.getElementById('thermo-mode').textContent = state.thermostat.mode === 'off' ? 'System Off' : state.thermostat.mode;
+  document.querySelectorAll('.mode-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.mode === state.thermostat.mode);
+  });
+}
+
+function renderMusic() {
+  const m = state.music;
+  const track = TRACKS[m.genre]?.[m.trackIndex % TRACKS[m.genre].length];
+  const art = document.getElementById('music-art');
+  art.classList.toggle('playing', m.playing);
+  document.getElementById('music-title').textContent = m.playing && track ? track.title : 'Not Playing';
+  document.getElementById('music-artist').textContent = m.playing && track ? track.artist : '—';
+  document.getElementById('play-btn').textContent = m.playing ? '⏸' : '▶';
+  document.getElementById('volume-slider').value = m.volume;
+}
+
+function renderGenres() {
+  document.getElementById('genre-tags').innerHTML = GENRES.map(g =>
+    `<div class="genre-tag ${state.music.genre === g ? 'active' : ''}"
+          onclick="selectGenre('${g}')">${g}</div>`
+  ).join('');
+}
+
+function renderDoors() {
+  document.getElementById('doors-grid').innerHTML = DOORS.map(d => {
+    const locked = state.doors[d.id];
+    return `
+      <div class="door-row">
+        <div class="door-info">
+          <span class="door-icon">${locked ? '🔒' : '🔓'}</span>
+          <div>
+            <div class="door-name">${d.name}</div>
+            <div class="door-status" style="color:${locked ? 'var(--green)' : 'var(--red)'}">
+              ${locked ? 'LOCKED' : 'UNLOCKED'}
+            </div>
+          </div>
+        </div>
+        <button class="door-toggle ${locked ? 'locked' : ''}"
+                onclick="toggleDoor('${d.id}')"></button>
+      </div>`;
+  }).join('');
+}
+
+function renderScenes() {
+  document.querySelectorAll('.scene-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.scene === state.activeScene);
+  });
+}
+
+function syntaxHighlight(obj) {
+  return Object.entries(obj).map(([k, v]) => {
+    let valHtml;
+    if (typeof v === 'string') {
+      // Check if it's an enum-like value
+      if (/^[a-z_]+$/.test(v) || ['heat','cool','auto','off','play','pause','skip','set_volume','lock','unlock'].includes(v)) {
+        valHtml = `<span class="val-enum">"${v}"</span>`;
+      } else {
+        valHtml = `<span class="val-str">"${v}"</span>`;
+      }
+    } else if (typeof v === 'number') {
+      valHtml = `<span class="val-num">${v}</span>`;
+    } else {
+      valHtml = `<span class="val-str">${JSON.stringify(v)}</span>`;
+    }
+    return `<span class="key">"${k}"</span>: ${valHtml}`;
+  }).join(',\n');
+}
+
+function renderLog() {
+  const scroll = document.getElementById('log-scroll');
+  const countEl = document.getElementById('call-count');
+  countEl.textContent = logEntries.length;
+
+  if (logEntries.length === 0) {
+    scroll.innerHTML = '<div class="log-empty"><div class="log-empty-icon">⏳</div>No tool calls yet</div>';
+    return;
+  }
+  const html = logEntries.map(e => `
+    <div class="log-entry">
+      <div class="log-entry-header">
+        <div class="log-time">${e.time}</div>
+        <div class="log-type-badge ${e.type || 'imperative'}">${e.type || 'imperative'}</div>
+      </div>
+      <div class="log-tool">${e.tool}()</div>
+      <div class="log-section">
+        <div class="log-section-label">Request</div>
+        <pre style="margin:0;white-space:pre-wrap;">{\n${syntaxHighlight(e.params)}\n}</pre>
+      </div>
+      <div class="log-arrow">Response</div>
+      <div class="log-result-text">${typeof e.result === 'string' ? e.result : JSON.stringify(e.result)}</div>
+      <div class="log-duration">${e.duration != null ? e.duration + 'ms' : '< 1ms'}</div>
+    </div>`).join('');
+  scroll.innerHTML = html;
+  scroll.scrollTop = 0;
+}
+
+let _renderPending = false;
+function renderAll() {
+  if (_renderPending) return;
+  _renderPending = true;
+  requestAnimationFrame(() => {
+    _renderPending = false;
+    renderRooms();
+    renderThermostat();
+    renderMusic();
+    renderGenres();
+    renderDoors();
+    renderScenes();
+    updatePrompt();
+  });
+}
+
+// ─── Actions ────────────────────────────────────────────────────────
+function toggleRoom(id) {
+  state.lights[id].on = !state.lights[id].on;
+  if (state.lights[id].on && state.lights[id].brightness === 0) state.lights[id].brightness = 80;
+  renderAll();
+}
+
+function setRoomBrightness(id, val) {
+  state.lights[id].brightness = parseInt(val);
+  state.lights[id].on = val > 0;
+  renderAll();
+}
+
+function setRoomColor(id, color) {
+  state.lights[id].color = color;
+  renderAll();
+}
+
+function adjustTemp(delta) {
+  state.thermostat.temperature = Math.max(60, Math.min(85, state.thermostat.temperature + delta));
+  renderAll();
+}
+
+function setMode(mode) {
+  state.thermostat.mode = mode;
+  renderAll();
+}
+
+function musicAction(action, dir) {
+  if (action === 'toggle') {
+    state.music.playing = !state.music.playing;
+  } else if (action === 'skip') {
+    state.music.trackIndex += dir || 1;
+    if (state.music.trackIndex < 0) state.music.trackIndex = 0;
+    state.music.playing = true;
+  }
+  renderAll();
+}
+
+function setVolume(val) {
+  state.music.volume = parseInt(val);
+  updatePrompt();
+}
+
+function selectGenre(genre) {
+  state.music.genre = genre;
+  state.music.trackIndex = 0;
+  state.music.playing = true;
+  renderAll();
+}
+
+function toggleDoor(id) {
+  state.doors[id] = !state.doors[id];
+  renderAll();
+}
+
+function activateScene(scene) {
+  state.activeScene = scene;
+  const scenes = {
+    good_morning: () => {
+      Object.keys(state.lights).forEach(r => { state.lights[r] = { brightness: 100, color: '#f8f0e3', on: true }; });
+      state.thermostat = { temperature: 72, mode: 'auto' };
+      state.music = { playing: true, genre: 'Jazz', trackIndex: 0, volume: 40 };
+      state.doors = { front: false, back: true, garage: false };
+    },
+    movie_night: () => {
+      Object.keys(state.lights).forEach(r => { state.lights[r] = { brightness: 10, color: '#dda0dd', on: true }; });
+      state.lights.living_room = { brightness: 15, color: '#ff6b35', on: true };
+      state.thermostat = { temperature: 70, mode: 'cool' };
+      state.music = { playing: false, genre: 'Ambient', trackIndex: 0, volume: 20 };
+      state.doors = { front: true, back: true, garage: true };
+    },
+    party: () => {
+      Object.keys(state.lights).forEach(r => { state.lights[r] = { brightness: 100, color: '#00ff88', on: true }; });
+      state.lights.living_room.color = '#ff6b35';
+      state.lights.bedroom.color = '#dda0dd';
+      state.thermostat = { temperature: 68, mode: 'cool' };
+      state.music = { playing: true, genre: 'Electronic', trackIndex: 0, volume: 85 };
+      state.doors = { front: false, back: false, garage: false };
+    },
+    bedtime: () => {
+      Object.keys(state.lights).forEach(r => { state.lights[r] = { brightness: 0, color: '#f8f0e3', on: false }; });
+      state.lights.bedroom = { brightness: 10, color: '#ffcccb', on: true };
+      state.thermostat = { temperature: 67, mode: 'auto' };
+      state.music = { playing: true, genre: 'Ambient', trackIndex: 0, volume: 15 };
+      state.doors = { front: true, back: true, garage: true };
+    }
+  };
+  scenes[scene]?.();
+  addLog('set_scene', { scene }, `Scene "${scene}" activated`);
+  renderAll();
+}
+
+// ─── Agent Log ──────────────────────────────────────────────────────
+function addLog(tool, params, result, type = 'imperative') {
+  const now = new Date();
+  const startTime = window._toolCallStart || now;
+  const duration = now - startTime;
+  logEntries.unshift({
+    time: now.toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' }) + '.' + String(now.getMilliseconds()).padStart(3, '0'),
+    tool,
+    params,
+    result,
+    type,
+    duration
+  });
+  if (logEntries.length > 50) logEntries.pop();
+  requestAnimationFrame(() => {
+    renderLog();
+    animateProtocolFlow(tool, params, result);
+  });
+}
+
+function animateProtocolFlow(tool, params, result) {
+  const flowCall = document.getElementById('flow-call');
+  const flowResponse = document.getElementById('flow-response');
+
+  // Step 3: show the call
+  flowCall.className = 'flow-step active';
+  flowCall.querySelector('.flow-detail').textContent = `executeTool("${tool}", {...})`;
+
+  // Step 4: show the response after a brief delay
+  setTimeout(() => {
+    flowCall.className = 'flow-step completed';
+    flowResponse.className = 'flow-step active';
+    const resultText = typeof result === 'string' ? result : JSON.stringify(result);
+    flowResponse.querySelector('.flow-detail').textContent = resultText.substring(0, 60) + (resultText.length > 60 ? '...' : '');
+
+    setTimeout(() => {
+      flowResponse.className = 'flow-step completed';
+      // Reset to waiting after a pause
+      setTimeout(() => {
+        flowCall.className = 'flow-step waiting';
+        flowCall.querySelector('.flow-detail').textContent = 'Waiting for agent...';
+        flowResponse.className = 'flow-step waiting';
+        flowResponse.querySelector('.flow-detail').textContent = '—';
+      }, 3000);
+    }, 1500);
+  }, 400);
+}
+
+// ─── Prompt Output ──────────────────────────────────────────────────
+function updatePrompt() {
+  const parts = [];
+
+  const litRooms = ROOMS.filter(r => state.lights[r.id].on);
+  if (litRooms.length > 0) {
+    const descs = litRooms.map(r => `${r.name} at ${state.lights[r.id].brightness}%`);
+    parts.push(`Lights on in ${descs.join(', ')}`);
+  }
+
+  parts.push(`Thermostat set to ${state.thermostat.temperature}°F (${state.thermostat.mode})`);
+
+  if (state.music.playing) {
+    const track = TRACKS[state.music.genre]?.[state.music.trackIndex % TRACKS[state.music.genre].length];
+    parts.push(`Playing "${track?.title}" by ${track?.artist} (${state.music.genre}, vol ${state.music.volume}%)`);
+  }
+
+  const lockedDoors = DOORS.filter(d => state.doors[d.id]).map(d => d.name);
+  const unlockedDoors = DOORS.filter(d => !state.doors[d.id]).map(d => d.name);
+  if (unlockedDoors.length > 0) parts.push(`Unlocked: ${unlockedDoors.join(', ')}`);
+  if (lockedDoors.length === 3) parts.push('All doors locked');
+
+  if (state.activeScene) parts.push(`Active scene: ${state.activeScene}`);
+
+  document.getElementById('prompt-output').textContent =
+    `Current smart home state: ${parts.join('. ')}. Use the WebMCP tools (set_lights, adjust_thermostat, play_music, lock_doors, set_scene) to control this home.`;
+}
+
+// ─── Intercom form handler ──────────────────────────────────────────
+document.querySelector('form[toolname="send_intercom_message"]').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const room = document.getElementById('intercom-room').value;
+  const msg = document.getElementById('intercom-msg').value;
+  if (!msg) return;
+  const roomName = room === 'all_rooms' ? 'All Rooms' : ROOMS.find(r => r.id === room)?.name || room;
+  addLog('send_intercom_message', { room, message: msg }, `Broadcasting to ${roomName}: "${msg}"`);
+  document.getElementById('intercom-msg').value = '';
+  if (e.agentInvoked) {
+    e.respondWith(Promise.resolve({ status: 'sent', room: roomName, message: msg }));
+  }
+});
+
+// ─── WebMCP Registration ────────────────────────────────────────────
+function wrapExecute(fn) {
+  return (params) => {
+    window._toolCallStart = Date.now();
+    return fn(params);
+  };
+}
+
+function registerWebMCPTools() {
+  if (!navigator.modelContext) return;
+
+  navigator.modelContext.provideContext({
+    tools: [
+      {
+        name: 'set_lights',
+        description: 'Control the lighting in a specific room. Set brightness (0-100) and color. Setting brightness to 0 turns off the light.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            room: { type: 'string', enum: ['living_room','bedroom','kitchen','bathroom'], description: 'The room to control' },
+            brightness: { type: 'number', minimum: 0, maximum: 100, description: 'Brightness level from 0 (off) to 100 (full)' },
+            color: { type: 'string', description: 'Hex color code for the light (e.g. #f8f0e3 for warm white, #ff6b35 for orange, #00ff88 for green)' }
+          },
+          required: ['room', 'brightness']
+        },
+        execute: wrapExecute((params) => {
+          const room = params.room;
+          if (!state.lights[room]) return { content: [{ type: 'text', text: `Error: Unknown room "${room}"` }] };
+          state.lights[room].brightness = Math.max(0, Math.min(100, params.brightness));
+          state.lights[room].on = params.brightness > 0;
+          if (params.color) state.lights[room].color = params.color;
+          const result = `${ROOMS.find(r=>r.id===room)?.name}: ${state.lights[room].on ? state.lights[room].brightness + '%, color ' + state.lights[room].color : 'Off'}`;
+          addLog('set_lights', params, result);
+          renderAll();
+          return { content: [{ type: 'text', text: result }] };
+        })
+      },
+      {
+        name: 'adjust_thermostat',
+        description: 'Set the home thermostat temperature and mode. Temperature range is 60-85°F.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            temperature: { type: 'number', minimum: 60, maximum: 85, description: 'Target temperature in Fahrenheit' },
+            mode: { type: 'string', enum: ['heat','cool','auto','off'], description: 'HVAC mode' }
+          },
+          required: ['temperature']
+        },
+        execute: wrapExecute((params) => {
+          state.thermostat.temperature = Math.max(60, Math.min(85, params.temperature));
+          if (params.mode) state.thermostat.mode = params.mode;
+          const result = `Thermostat: ${state.thermostat.temperature}°F, mode: ${state.thermostat.mode}`;
+          addLog('adjust_thermostat', params, result);
+          renderAll();
+          return { content: [{ type: 'text', text: result }] };
+        })
+      },
+      {
+        name: 'play_music',
+        description: 'Control the home music system. Play, pause, skip tracks, set volume, or change genre.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            action: { type: 'string', enum: ['play','pause','skip','set_volume'], description: 'Music action to perform' },
+            genre: { type: 'string', enum: ['Chill','Jazz','Pop','Rock','Classical','Lo-fi','Electronic','Ambient'], description: 'Music genre to play (used with play action)' },
+            volume: { type: 'number', minimum: 0, maximum: 100, description: 'Volume level (used with set_volume action)' }
+          },
+          required: ['action']
+        },
+        execute: wrapExecute((params) => {
+          if (params.action === 'play') {
+            state.music.playing = true;
+            if (params.genre) { state.music.genre = params.genre; state.music.trackIndex = 0; }
+          } else if (params.action === 'pause') {
+            state.music.playing = false;
+          } else if (params.action === 'skip') {
+            state.music.trackIndex++;
+            state.music.playing = true;
+          } else if (params.action === 'set_volume') {
+            if (params.volume != null) state.music.volume = Math.max(0, Math.min(100, params.volume));
+          }
+          if (params.volume != null && params.action !== 'set_volume') {
+            state.music.volume = Math.max(0, Math.min(100, params.volume));
+          }
+          const track = TRACKS[state.music.genre]?.[state.music.trackIndex % TRACKS[state.music.genre].length];
+          const result = state.music.playing
+            ? `Now playing: "${track?.title}" by ${track?.artist} (${state.music.genre}) at volume ${state.music.volume}%`
+            : 'Music paused';
+          addLog('play_music', params, result);
+          renderAll();
+          return { content: [{ type: 'text', text: result }] };
+        })
+      },
+      {
+        name: 'lock_doors',
+        description: 'Lock or unlock a specific door in the home.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            door: { type: 'string', enum: ['front','back','garage'], description: 'Which door to control' },
+            action: { type: 'string', enum: ['lock','unlock'], description: 'Lock or unlock the door' }
+          },
+          required: ['door', 'action']
+        },
+        execute: wrapExecute((params) => {
+          if (state.doors[params.door] === undefined) return { content: [{ type: 'text', text: `Error: Unknown door "${params.door}"` }] };
+          state.doors[params.door] = params.action === 'lock';
+          const doorName = DOORS.find(d => d.id === params.door)?.name;
+          const result = `${doorName}: ${params.action === 'lock' ? 'Locked 🔒' : 'Unlocked 🔓'}`;
+          addLog('lock_doors', params, result);
+          renderAll();
+          return { content: [{ type: 'text', text: result }] };
+        })
+      },
+      {
+        name: 'set_scene',
+        description: 'Activate a preset scene that configures lights, thermostat, music, and doors all at once. Available scenes: good_morning (bright lights, jazz, 72°F), movie_night (dim warm lights, no music, 70°F, all locked), party (colorful lights, electronic music, 68°F), bedtime (lights off except dim bedroom, ambient music, 67°F, all locked).',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            scene: { type: 'string', enum: ['good_morning','movie_night','party','bedtime'], description: 'The scene preset to activate' }
+          },
+          required: ['scene']
+        },
+        execute: wrapExecute((params) => {
+          activateScene(params.scene);
+          return { content: [{ type: 'text', text: `Scene "${params.scene}" activated. All home devices adjusted.` }] };
+        })
+      }
+    ]
+  });
+}
+
+// ─── Feature detection ──────────────────────────────────────────────
+function detectWebMCP() {
+  const badge = document.getElementById('webmcp-badge');
+  const banner = document.getElementById('webmcp-banner');
+
+  if (navigator.modelContext) {
+    badge.className = 'webmcp-badge active';
+    badge.innerHTML = '<div class="dot"></div><span>WebMCP Active</span>';
+    banner.style.display = 'none';
+    registerWebMCPTools();
+    updateToolChips();
+  } else {
+    badge.className = 'webmcp-badge inactive';
+    badge.innerHTML = '<div class="dot"></div><span>WebMCP Unavailable</span>';
+    banner.style.display = 'block';
+    updateToolChips();
+  }
+}
+
+function updateToolChips() {
+  const chipsEl = document.getElementById('tool-chips');
+  const countEl = document.getElementById('tool-count');
+  const imperative = ['set_lights','adjust_thermostat','play_music','lock_doors','set_scene'];
+  const declarative = ['send_intercom_message'];
+  const all = [...imperative.map(t => ({ name: t, type: 'imperative' })), ...declarative.map(t => ({ name: t, type: 'declarative' }))];
+  countEl.textContent = all.length;
+  chipsEl.innerHTML = all.map(t =>
+    `<span class="tool-chip ${t.type}">${t.name}</span>`
+  ).join('');
+}
+
+// ─── Copy / Send ────────────────────────────────────────────────────
+function copyPrompt() {
+  const text = document.getElementById('prompt-output').textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    const btn = event.target;
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy', 2000);
+  });
+}
+
+const SYNC_URL = 'http://localhost:4242';
+
+async function sendToClaude() {
+  const prompt = document.getElementById('prompt-output').textContent;
+  const btn = document.getElementById('send-btn');
+  btn.textContent = 'Sending...';
+  try {
+    await fetch(SYNC_URL + '/prompt', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt, url: location.href, pathname: location.pathname })
+    });
+    btn.textContent = 'Sent!';
+    setTimeout(() => btn.textContent = 'Send to Claude', 2000);
+  } catch {
+    btn.textContent = 'No server';
+    setTimeout(() => btn.textContent = 'Send to Claude', 3000);
+  }
+}
+
+try {
+  const es = new EventSource(SYNC_URL + '/events');
+  es.addEventListener('status', e => {
+    const d = JSON.parse(e.data);
+    const btn = document.getElementById('send-btn');
+    if (d.status === 'processing') btn.textContent = 'Claude working...';
+    if (d.status === 'done') { btn.textContent = 'Done!'; setTimeout(() => btn.textContent = 'Send to Claude', 2000); }
+  });
+} catch {}
+
+// ─── Init ───────────────────────────────────────────────────────────
+renderAll();
+renderLog();
+detectWebMCP();
+</script>
+</body>
+</html>
